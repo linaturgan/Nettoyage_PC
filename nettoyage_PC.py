@@ -89,21 +89,11 @@ def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callba
                 if progress_callback and total > 0:
                     progress_callback(compteur[0] / total)
 
-def action_nettoyer(simulate, progress_callback=None, status_callback=None, file_callback=None, message_callback=None):
+def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, status_callback=None, file_callback=None, message_callback=None):
     global statistiques
     statistiques = {"supprimes": 0, "erreurs": 0, "simules": 0, "taille_totale": 0}
 
-    extensions = ['.log', '.tmp']
-    if OS == "Darwin":
-        extensions.append('.DS_Store')
-
     log("--- Début du nettoyage ---")
-
-    dossiers = [Path.home() / "Downloads", Path.home() / "Documents"]
-    if OS == "Darwin":
-        dossiers.append(Path.home() / "Library" / "Caches")
-    elif OS == "Windows":
-        dossiers.append(Path.home() / "AppData" / "Local" / "Temp")
 
     if status_callback:
         status_callback("Calcul du nombre de fichiers...")
@@ -124,7 +114,7 @@ def action_nettoyer(simulate, progress_callback=None, status_callback=None, file
     for dossier in dossiers:
         nettoyer_dossier(
             dossier,
-            extensions if dossier in [Path.home() / "Downloads", Path.home() / "Documents"] else None,
+            extensions,
             simulate, file_callback, message_callback, progress_callback, compteur, total_fichiers
         )
 
@@ -146,7 +136,7 @@ def lancer_gui():
 
     root = tk.Tk()
     root.title("🧹 Nettoyeur Universel PRO")
-    root.geometry("700x600")
+    root.geometry("700x650")
     root.configure(bg="white")
 
     simulation_var = tk.BooleanVar(value=True)
@@ -175,7 +165,7 @@ def lancer_gui():
     def update_progress(value):
         progress["value"] = value * 100
         root.update_idletasks()
-        time.sleep(0.001)  # Ralentisseur pour éviter le freeze
+        time.sleep(0.001)
 
     def update_status(text):
         status_label.config(text=text)
@@ -201,16 +191,37 @@ def lancer_gui():
 
     log_gui_callback = update_log_gui
 
-    def lancer_nettoyage_thread():
+    def lancer_nettoyage_thread(dossiers, extensions):
         threading.Thread(
             target=action_nettoyer,
-            args=(simulation_var.get(), update_progress, update_status, update_current_file, update_message),
+            args=(dossiers, extensions, simulation_var.get(), update_progress, update_status, update_current_file, update_message),
             daemon=True
         ).start()
 
-    tk.Button(root, text="🧹 Lancer le nettoyage", command=lancer_nettoyage_thread).pack(pady=10)
+    def lancer_global():
+        extensions = ['.log', '.tmp']
+        if OS == "Darwin":
+            extensions.append('.DS_Store')
+        dossiers = [Path.home() / "Downloads", Path.home() / "Documents"]
+        if OS == "Darwin":
+            dossiers.append(Path.home() / "Library" / "Caches")
+        elif OS == "Windows":
+            dossiers.append(Path.home() / "AppData" / "Local" / "Temp")
+        lancer_nettoyage_thread(dossiers, extensions)
+
+    def lancer_choix_dossier():
+        dossier = filedialog.askdirectory(title="Choisissez un dossier à nettoyer")
+        if not dossier:
+            return
+        extensions = ['.log', '.tmp']
+        if OS == "Darwin":
+            extensions.append('.DS_Store')
+        lancer_nettoyage_thread([Path(dossier)], extensions)
+
+    tk.Button(root, text="🧹 Nettoyage global", command=lancer_global).pack(pady=10)
+    tk.Button(root, text="📂 Nettoyer un dossier choisi", command=lancer_choix_dossier).pack(pady=5)
     tk.Button(root, text="📄 Ouvrir le journal externe", command=lambda: ouvrir_journal()).pack(pady=5)
-    tk.Label(root, text="v5.2 - Mac & Windows - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
+    tk.Label(root, text="v6.0 - Mode global & ciblé - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
 
     root.mainloop()
 

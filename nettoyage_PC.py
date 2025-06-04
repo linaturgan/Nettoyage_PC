@@ -71,22 +71,30 @@ def supprimer(item, simulate):
             log(msg)
             return msg
 
+
 def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callback=None, message_callback=None, progress_callback=None, compteur=[0], total=1):
     dossier_path = Path(dossier).expanduser()
     if not dossier_path.exists():
         return
     for root, dirs, files in os.walk(dossier_path):
         for name in files:
+            if stop_flag.is_set():
+                return
             file_path = Path(root) / name
+
+            # NOUVEAU : journalisation du fichier parcouru
+            log(f"Analyse de {file_path}")
+
             if extensions_cibles is None or file_path.suffix in extensions_cibles:
+                msg = supprimer(file_path, simulate)
                 if file_callback:
                     file_callback(file_path)
-                msg = supprimer(file_path, simulate)
                 if message_callback:
                     message_callback(msg)
                 compteur[0] += 1
                 if progress_callback and total > 0:
                     progress_callback(compteur[0] / total)
+
 
 def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, status_callback=None, file_callback=None, message_callback=None):
     global statistiques

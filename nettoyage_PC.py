@@ -8,6 +8,7 @@ from tkinter import messagebox, filedialog, ttk, scrolledtext
 import subprocess
 import platform
 import threading
+import time
 
 # --- Détection de l'OS ---
 OS = platform.system()
@@ -174,24 +175,29 @@ def lancer_gui():
     def update_progress(value):
         progress["value"] = value * 100
         root.update_idletasks()
+        time.sleep(0.001)  # Ralentisseur pour éviter le freeze
 
     def update_status(text):
         status_label.config(text=text)
         root.update_idletasks()
+        time.sleep(0.001)
 
     def update_current_file(path):
         current_file_label.config(text=str(path))
         root.update_idletasks()
+        time.sleep(0.001)
 
     def update_message(msg):
         message_label.config(text=msg)
         root.update_idletasks()
+        time.sleep(0.001)
 
     def update_log_gui(line):
         log_text.configure(state="normal")
         log_text.insert("end", line)
         log_text.see("end")
         log_text.configure(state="disabled")
+        time.sleep(0.001)
 
     log_gui_callback = update_log_gui
 
@@ -204,7 +210,7 @@ def lancer_gui():
 
     tk.Button(root, text="🧹 Lancer le nettoyage", command=lancer_nettoyage_thread).pack(pady=10)
     tk.Button(root, text="📄 Ouvrir le journal externe", command=lambda: ouvrir_journal()).pack(pady=5)
-    tk.Label(root, text="v5.1 - Mac & Windows", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
+    tk.Label(root, text="v5.2 - Mac & Windows - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
 
     root.mainloop()
 

@@ -25,5 +25,5 @@ jobs:
     - name: Upload to transfer.sh
       shell: bash
       run: |
-        ls Nettoyage_PC/dist
-        curl --upload-file Nettoyage_PC/dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe
+        ls dist
+        curl --upload-file dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe

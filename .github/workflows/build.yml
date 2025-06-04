@@ -23,5 +23,7 @@ jobs:
       run: pyinstaller --onefile --noconsole nettoyage_PC.py
 
     - name: Upload to transfer.sh
+      shell: bash
       run: |
-        curl --upload-file dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe
+        ls Nettoyage_PC/dist
+        curl --upload-file Nettoyage_PC/dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe

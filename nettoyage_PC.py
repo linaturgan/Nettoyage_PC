@@ -53,7 +53,7 @@ def supprimer(item, simulate):
             print(msg)
             log(msg)
 
-def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True):
+def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callback=None):
     dossier_path = Path(dossier).expanduser()
     if not dossier_path.exists():
         return
@@ -61,9 +61,11 @@ def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True):
         for name in files:
             file_path = Path(root) / name
             if extensions_cibles is None or file_path.suffix in extensions_cibles:
+                if file_callback:
+                    file_callback(file_path)
                 supprimer(file_path, simulate)
 
-def action_nettoyer(simulate, progress_callback=None, status_callback=None):
+def action_nettoyer(simulate, progress_callback=None, status_callback=None, file_callback=None):
     global statistiques
     statistiques = {"supprimes": 0, "erreurs": 0, "simules": 0, "taille_totale": 0}
 
@@ -78,20 +80,20 @@ def action_nettoyer(simulate, progress_callback=None, status_callback=None):
     if status_callback:
         status_callback("Nettoyage en cours...")
 
-    nettoyer_dossier(Path.home() / "Downloads", extensions, simulate)
+    nettoyer_dossier(Path.home() / "Downloads", extensions, simulate, file_callback=file_callback)
     current += 1
     if progress_callback:
         progress_callback(current / total_dossiers)
 
-    nettoyer_dossier(Path.home() / "Documents", extensions, simulate)
+    nettoyer_dossier(Path.home() / "Documents", extensions, simulate, file_callback=file_callback)
     current += 1
     if progress_callback:
         progress_callback(current / total_dossiers)
 
     if OS == "Darwin":
-        nettoyer_dossier(Path.home() / "Library" / "Caches", None, simulate)
+        nettoyer_dossier(Path.home() / "Library" / "Caches", None, simulate, file_callback=file_callback)
     elif OS == "Windows":
-        nettoyer_dossier(Path.home() / "AppData" / "Local" / "Temp", None, simulate)
+        nettoyer_dossier(Path.home() / "AppData" / "Local" / "Temp", None, simulate, file_callback=file_callback)
     current += 1
     if progress_callback:
         progress_callback(current / total_dossiers)
@@ -204,7 +206,7 @@ def scanner_doublons(simulation):
 def lancer_gui():
     root = tk.Tk()
     root.title("🧹 Nettoyeur Universel")
-    root.geometry("400x400")
+    root.geometry("500x450")
     root.configure(bg="white")
 
     simulation_var = tk.BooleanVar(value=True)
@@ -212,11 +214,14 @@ def lancer_gui():
     tk.Label(root, text="Nettoyage de fichiers inutiles", font=("Arial", 14), bg="white").pack(pady=10)
     tk.Checkbutton(root, text="Mode simulation (ne rien supprimer)", variable=simulation_var, bg="white").pack()
 
-    progress = ttk.Progressbar(root, length=300, mode="determinate")
+    progress = ttk.Progressbar(root, length=400, mode="determinate")
     progress.pack(pady=5)
 
     status_label = tk.Label(root, text="", font=("Arial", 10), bg="white")
     status_label.pack(pady=5)
+
+    current_file_label = tk.Label(root, text="", font=("Arial", 8), bg="white", wraplength=480, justify="left")
+    current_file_label.pack(pady=5)
 
     def update_progress(value):
         progress["value"] = value * 100
@@ -226,14 +231,22 @@ def lancer_gui():
         status_label.config(text=text)
         root.update_idletasks()
 
+    def update_current_file(path):
+        current_file_label.config(text=str(path))
+        root.update_idletasks()
+
     def lancer_nettoyage_thread():
-        threading.Thread(target=action_nettoyer, args=(simulation_var.get(), update_progress, update_status), daemon=True).start()
+        threading.Thread(
+            target=action_nettoyer,
+            args=(simulation_var.get(), update_progress, update_status, update_current_file),
+            daemon=True
+        ).start()
 
     tk.Button(root, text="🧹 Lancer le nettoyage", command=lancer_nettoyage_thread).pack(pady=10)
     tk.Button(root, text="🔍 Scanner les doublons", command=lambda: scanner_doublons(simulation_var)).pack()
     tk.Button(root, text="📄 Ouvrir le journal", command=lambda: ouvrir_journal()).pack(pady=10)
 
-    tk.Label(root, text="v3.1 - Mac & Windows", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
+    tk.Label(root, text="v3.2 - Mac & Windows", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
 
     root.mainloop()
 

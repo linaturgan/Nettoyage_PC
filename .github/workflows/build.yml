@@ -21,9 +21,3 @@ jobs:
 
     - name: Build EXE
       run: pyinstaller --onefile --noconsole nettoyage_PC.py
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2.3.1
-      with:
-        name: nettoyage_PC
-        path: dist/nettoyage_PC.exe

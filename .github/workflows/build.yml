@@ -21,3 +21,7 @@ jobs:
 
     - name: Build EXE
       run: pyinstaller --onefile --noconsole nettoyage_PC.py
+
+    - name: Upload to transfer.sh
+      run: |
+        curl --upload-file dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe

@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-import hashlib
 import datetime
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk, scrolledtext
@@ -119,6 +118,9 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
         )
 
     taille_mo = statistiques['taille_totale'] / (1024 * 1024)
+    fichiers_effectivement_supprimes = statistiques['supprimes']
+    espace_libere_mo = taille_mo if not simulate else 0
+
     log(f"Fichiers supprimés : {statistiques['supprimes']}")
     log(f"Fichiers simulés : {statistiques['simules']}")
     log(f"Erreurs rencontrées : {statistiques['erreurs']}")
@@ -128,7 +130,18 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
     if status_callback:
         status_callback("Nettoyage terminé ✅")
 
-    messagebox.showinfo("Nettoyage terminé", f"Nettoyage terminé ✅\n\nSupprimés : {statistiques['supprimes']}\nSimulés : {statistiques['simules']}\nErreurs : {statistiques['erreurs']}\nTaille totale : {taille_mo:.2f} Mo")
+    if simulate:
+        messagebox.showinfo("Simulation terminée",
+            f"Mode simulation terminé ✅\n\n"
+            f"Fichiers qui auraient été supprimés : {statistiques['simules']}\n"
+            f"Erreurs potentielles : {statistiques['erreurs']}\n"
+            f"Taille potentielle libérée : {taille_mo:.2f} Mo")
+    else:
+        messagebox.showinfo("Nettoyage terminé",
+            f"Nettoyage terminé ✅\n\n"
+            f"Fichiers supprimés : {fichiers_effectivement_supprimes}\n"
+            f"Erreurs rencontrées : {statistiques['erreurs']}\n"
+            f"Espace libéré : {espace_libere_mo:.2f} Mo")
 
 # --- GUI ---
 def lancer_gui():
@@ -221,7 +234,7 @@ def lancer_gui():
     tk.Button(root, text="🧹 Nettoyage global", command=lancer_global).pack(pady=10)
     tk.Button(root, text="📂 Nettoyer un dossier choisi", command=lancer_choix_dossier).pack(pady=5)
     tk.Button(root, text="📄 Ouvrir le journal externe", command=lambda: ouvrir_journal()).pack(pady=5)
-    tk.Label(root, text="v6.0 - Mode global & ciblé - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
+    tk.Label(root, text="v6.1 - Mode global & ciblé - Résumé clair - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
 
     root.mainloop()
 
@@ -238,3 +251,4 @@ def ouvrir_journal():
 
 if __name__ == "__main__":
     lancer_gui()
+

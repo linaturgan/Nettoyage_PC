@@ -1,4 +1,4 @@
-name: Build EXE with PyInstaller
+name: Build EXE with PyInstaller and create Release
 
 on:
   workflow_dispatch:
@@ -22,8 +22,10 @@ jobs:
     - name: Build EXE
       run: pyinstaller --onefile --noconsole nettoyage_PC.py
 
-    - name: Upload to transfer.sh
-      shell: bash
-      run: |
-        ls dist
-        curl --upload-file dist/nettoyage_PC.exe https://transfer.sh/nettoyage_PC.exe
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: nightly
+        files: dist/nettoyage_PC.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

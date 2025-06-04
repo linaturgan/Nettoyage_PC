@@ -15,6 +15,7 @@ OS = platform.system()
 # --- Journalisation ---
 log_file = Path.home() / "Documents" / "nettoyage_log.txt"
 log_gui_callback = None
+stop_flag = threading.Event()
 
 def log(message):
     timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
@@ -27,7 +28,6 @@ def log(message):
 # --- Statistiques ---
 statistiques = {"supprimes": 0, "erreurs": 0, "simules": 0, "taille_totale": 0}
 
-# --- Pré-scan pour calculer le total de fichiers à traiter ---
 def compter_fichiers(dossiers, extensions_cibles):
     total = 0
     for dossier in dossiers:
@@ -41,7 +41,6 @@ def compter_fichiers(dossiers, extensions_cibles):
                     total += 1
     return total
 
-# --- Suppression ciblée ---
 def supprimer(item, simulate):
     try:
         taille = item.stat().st_size
@@ -71,7 +70,6 @@ def supprimer(item, simulate):
             log(msg)
             return msg
 
-
 def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callback=None, message_callback=None, progress_callback=None, compteur=[0], total=1):
     dossier_path = Path(dossier).expanduser()
     if not dossier_path.exists():
@@ -82,7 +80,7 @@ def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callba
                 return
             file_path = Path(root) / name
 
-            # NOUVEAU : journalisation du fichier parcouru
+            # Journalisation de chaque fichier rencontré
             log(f"Analyse de {file_path}")
 
             if extensions_cibles is None or file_path.suffix in extensions_cibles:
@@ -95,10 +93,10 @@ def nettoyer_dossier(dossier, extensions_cibles=None, simulate=True, file_callba
                 if progress_callback and total > 0:
                     progress_callback(compteur[0] / total)
 
-
-def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, status_callback=None, file_callback=None, message_callback=None):
+def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, status_callback=None, file_callback=None, message_callback=None, finish_callback=None):
     global statistiques
     statistiques = {"supprimes": 0, "erreurs": 0, "simules": 0, "taille_totale": 0}
+    stop_flag.clear()
 
     log("--- Début du nettoyage ---")
 
@@ -111,6 +109,8 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
         if status_callback:
             status_callback("Aucun fichier à nettoyer ✅")
         messagebox.showinfo("Nettoyage terminé", "Aucun fichier à nettoyer.")
+        if finish_callback:
+            finish_callback()
         return
 
     compteur = [0]
@@ -119,6 +119,8 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
         status_callback("Nettoyage en cours...")
 
     for dossier in dossiers:
+        if stop_flag.is_set():
+            break
         nettoyer_dossier(
             dossier,
             extensions,
@@ -136,7 +138,7 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
     log("--- Fin du nettoyage ---\n")
 
     if status_callback:
-        status_callback("Nettoyage terminé ✅")
+        status_callback("Nettoyage terminé ✅" if not stop_flag.is_set() else "Nettoyage interrompu")
 
     if simulate:
         messagebox.showinfo("Simulation terminée",
@@ -146,10 +148,13 @@ def action_nettoyer(dossiers, extensions, simulate, progress_callback=None, stat
             f"Taille potentielle libérée : {taille_mo:.2f} Mo")
     else:
         messagebox.showinfo("Nettoyage terminé",
-            f"Nettoyage terminé ✅\n\n"
+            f"{'Nettoyage interrompu' if stop_flag.is_set() else 'Nettoyage terminé ✅'}\n\n"
             f"Fichiers supprimés : {fichiers_effectivement_supprimes}\n"
             f"Erreurs rencontrées : {statistiques['erreurs']}\n"
             f"Espace libéré : {espace_libere_mo:.2f} Mo")
+
+    if finish_callback:
+        finish_callback()
 
 # --- GUI ---
 def lancer_gui():
@@ -157,7 +162,7 @@ def lancer_gui():
 
     root = tk.Tk()
     root.title("🧹 Nettoyeur Universel PRO")
-    root.geometry("700x650")
+    root.geometry("750x700")
     root.configure(bg="white")
 
     simulation_var = tk.BooleanVar(value=True)
@@ -165,16 +170,16 @@ def lancer_gui():
     tk.Label(root, text="Nettoyage de fichiers inutiles", font=("Arial", 14), bg="white").pack(pady=10)
     tk.Checkbutton(root, text="Mode simulation (ne rien supprimer)", variable=simulation_var, bg="white").pack()
 
-    progress = ttk.Progressbar(root, length=600, mode="determinate")
+    progress = ttk.Progressbar(root, length=700, mode="determinate")
     progress.pack(pady=5)
 
     status_label = tk.Label(root, text="", font=("Arial", 10), bg="white")
     status_label.pack(pady=5)
 
-    current_file_label = tk.Label(root, text="", font=("Arial", 8), bg="white", wraplength=680, justify="left")
+    current_file_label = tk.Label(root, text="", font=("Arial", 8), bg="white", wraplength=700, justify="left")
     current_file_label.pack(pady=5)
 
-    message_label = tk.Label(root, text="", font=("Arial", 9), bg="white", fg="red", wraplength=680, justify="left")
+    message_label = tk.Label(root, text="", font=("Arial", 9), bg="white", fg="red", wraplength=700, justify="left")
     message_label.pack(pady=5)
 
     log_frame = tk.LabelFrame(root, text="Journal temps réel", bg="white", padx=5, pady=5)
@@ -182,6 +187,9 @@ def lancer_gui():
 
     log_text = scrolledtext.ScrolledText(log_frame, state="disabled", height=15, wrap="word")
     log_text.pack(fill="both", expand=True)
+
+    stop_button = tk.Button(root, text="⛔ Arrêter le nettoyage", state="disabled")
+    stop_button.pack(pady=10)
 
     def update_progress(value):
         progress["value"] = value * 100
@@ -212,10 +220,14 @@ def lancer_gui():
 
     log_gui_callback = update_log_gui
 
+    def on_finish():
+        stop_button.config(state="disabled")
+
     def lancer_nettoyage_thread(dossiers, extensions):
+        stop_button.config(state="normal")
         threading.Thread(
             target=action_nettoyer,
-            args=(dossiers, extensions, simulation_var.get(), update_progress, update_status, update_current_file, update_message),
+            args=(dossiers, extensions, simulation_var.get(), update_progress, update_status, update_current_file, update_message, on_finish),
             daemon=True
         ).start()
 
@@ -239,10 +251,12 @@ def lancer_gui():
             extensions.append('.DS_Store')
         lancer_nettoyage_thread([Path(dossier)], extensions)
 
+    stop_button.config(command=lambda: stop_flag.set())
+
     tk.Button(root, text="🧹 Nettoyage global", command=lancer_global).pack(pady=10)
     tk.Button(root, text="📂 Nettoyer un dossier choisi", command=lancer_choix_dossier).pack(pady=5)
     tk.Button(root, text="📄 Ouvrir le journal externe", command=lambda: ouvrir_journal()).pack(pady=5)
-    tk.Label(root, text="v6.1 - Mode global & ciblé - Résumé clair - Anti-Freezing Edition", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
+    tk.Label(root, text="v7.1 - Journal complet des fichiers parcourus", font=("Arial", 8), bg="white").pack(side="bottom", pady=10)
 
     root.mainloop()
 
